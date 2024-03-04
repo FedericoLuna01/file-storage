@@ -27,7 +27,15 @@ function Placeholder () {
   )
 }
 
-export function FileBrowser({ title, favorites }: {title: string, favorites?: boolean}) {
+export function FileBrowser({
+  title,
+  favoritesOnly,
+  deletedOnly
+}: {
+  title: string,
+  favoritesOnly?: boolean,
+  deletedOnly?: boolean
+}) {
   const organization = useOrganization()
   const user = useUser()
   const [query, setQuery] = useState<string>("")
@@ -37,7 +45,12 @@ export function FileBrowser({ title, favorites }: {title: string, favorites?: bo
     orgId = organization.organization?.id ?? user.user?.id
   }
 
-  const files = useQuery(api.files.getFiles, orgId ? { orgId, query, favorites } : 'skip')
+  const files = useQuery(api.files.getFiles,
+    orgId ? { orgId, query, favorites: favoritesOnly, deletedOnly }
+      : 'skip'
+  )
+
+  const favorites = useQuery(api.files.getAllFavorites, orgId ? { orgId } : 'skip')
 
   const isLoading = files === undefined
 
@@ -83,6 +96,8 @@ export function FileBrowser({ title, favorites }: {title: string, favorites?: bo
                   <FileCard
                     key={file._id}
                     file={file}
+                    favorites={favorites ?? [
+                    ]}
                   />
                 ))
               }

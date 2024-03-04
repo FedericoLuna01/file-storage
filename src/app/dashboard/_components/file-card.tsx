@@ -1,4 +1,4 @@
-import { FileTextIcon, GanttChartIcon, ImageIcon, MoreVertical, Star, Trash } from "lucide-react";
+import { FileTextIcon, GanttChartIcon, ImageIcon, MoreVertical, Star, Trash, Undo2 } from "lucide-react";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +19,14 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useToast } from "@/components/ui/use-toast";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
+import { Protect } from "@clerk/nextjs";
 
 
-export function FileCardActions ({ file }: { file: Doc<"files">}) {
+export function FileCardActions ({ file, isFavorite }: { file: Doc<"files">, isFavorite?: boolean }) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const deleteFile = useMutation(api.files.deleteFile)
+  const restoreFile = useMutation(api.files.restoreFile)
   const toggleFavorite = useMutation(api.files.toggleFavorite)
   const { toast } = useToast()
 
@@ -37,7 +40,7 @@ export function FileCardActions ({ file }: { file: Doc<"files">}) {
           <AlertDialogHeader>
             <AlertDialogTitle>Estás seguro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Estás a punto de eliminar este archivo, esta acción no se puede deshacer.
+              Estás a punto de marcar un archivo para eliminar. Después de 1 minuto el archivo no se podrá recuperar.
               Asegúrate de que realmente es lo que quieres hacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -50,8 +53,8 @@ export function FileCardActions ({ file }: { file: Doc<"files">}) {
                 })
                 toast({
                   variant: 'success',
-                  title: 'Archivo eliminado',
-                  description: 'El archivo se eliminó correctamente',
+                  title: 'Archivo marcado para ser eliminado',
+                  description: 'El archivo fue movido a la papelera, va a ser eliminado pronto.',
                 })
               }}
             >Continuar</AlertDialogAction>
@@ -59,10 +62,15 @@ export function FileCardActions ({ file }: { file: Doc<"files">}) {
         </AlertDialogContent>
       </AlertDialog>
       <DropdownMenu>
-        <DropdownMenuTrigger>
-          <MoreVertical className=" w-4 h-4 top-2" />
+        <DropdownMenuTrigger
+          className="p-2"
+        >
+          <MoreVertical className="w-4 h-4 top-2" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent
+          side='bottom'
+          align="end"
+        >
           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -70,15 +78,35 @@ export function FileCardActions ({ file }: { file: Doc<"files">}) {
               toggleFavorite({ fileId: file._id })
             }}
           >
-            <Star className="w-5 h-5 mr-2" /> Favoritos
+            <Star className={cn("w-5 h-5 mr-2", {
+              'text-yellow-500 fill-yellow-500': isFavorite
+            })} /> { isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos' }
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className='text-destructive focus:text-destructive'
-            onClick={() => setIsConfirmOpen(true)}
+          <Protect
+            role='org:admin'
+            fallback={null}
           >
-            <Trash className="w-5 h-5 mr-2" /> Eliminar
-          </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {
+              file.shouldDelete ? (
+                <DropdownMenuItem
+                  onClick={() => restoreFile({ fileId: file._id })}
+                  className='text-success focus:text-success'
+                >
+                  <Undo2 className="w-5 h-5 mr-2" /> Restaurar
+                </DropdownMenuItem>
+
+              ) : (
+                <DropdownMenuItem
+                  className='text-destructive focus:text-destructive'
+                  onClick={() => setIsConfirmOpen(true)}
+                >
+                  <Trash className="w-5 h-5 mr-2" /> Eliminar
+                </DropdownMenuItem>
+              )
+            }
+
+          </Protect>
         </DropdownMenuContent>
       </DropdownMenu>
     </>
@@ -89,12 +117,19 @@ function getFileUrl (fileId: Id<"_storage">) {
   return `${process.env.NEXT_PUBLIC_CONVEX_URL}/api/storage/${fileId}`
 }
 
-export function FileCard({ file }: { file: Doc<"files">}) {
+export function FileCard({
+  file,
+  favorites
+}: { file: Doc<"files">,
+favorites: Doc<"favorites">[]
+}) {
   const typeIcons = {
     'image': <ImageIcon />,
     'pdf': <FileTextIcon />,
     'csv': <GanttChartIcon />
   } as Record<Doc<"files">["type"], ReactNode>
+
+  const isFavorite = favorites?.some(favorite => favorite.fileId === file._id)
 
   return (
     <Card>
@@ -116,6 +151,7 @@ export function FileCard({ file }: { file: Doc<"files">}) {
         >
           <FileCardActions
             file={file}
+            isFavorite={isFavorite}
           />
         </div>
       </CardHeader>
