@@ -1,110 +1,113 @@
-'use client'
+"use client";
 
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { UploadButton } from "@/app/dashboard/_components/upload-button";
 import { FileCard } from "@/app/dashboard/_components/file-card";
 import Image from "next/image";
-import { Loader2 } from "lucide-react";
+import { GridIcon, Loader2, RowsIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { SearchBar } from "@/app/dashboard/_components/search-bar";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
+import { DataTable } from "@/components/data-table";
+import { columns } from "./columns";
 
-function Placeholder () {
+function Placeholder() {
   return (
-    <div
-      className='flex flex-col items-center justify-center text-center mt-24 gap-4'
-    >
+    <div className="flex flex-col items-center justify-center text-center mt-24 gap-4">
       <Image
-        alt='an image of a person looking for files in a shell'
+        alt="an image of a person looking for files in a shell"
         height={250}
         width={250}
-        src='/empty-state.svg'
+        src="/empty-state.svg"
       />
-      <p className="text-2xl max-w-md">Todavía no tienes archivos, prueba subiendo uno.</p>
+      <p className="text-2xl max-w-md">
+        Todavía no tienes archivos, prueba subiendo uno.
+      </p>
       <UploadButton />
     </div>
-  )
+  );
 }
 
 export function FileBrowser({
   title,
   favoritesOnly,
-  deletedOnly
+  deletedOnly,
 }: {
-  title: string,
-  favoritesOnly?: boolean,
-  deletedOnly?: boolean
+  title: string;
+  favoritesOnly?: boolean;
+  deletedOnly?: boolean;
 }) {
-  const organization = useOrganization()
-  const user = useUser()
-  const [query, setQuery] = useState<string>("")
+  const organization = useOrganization();
+  const user = useUser();
+  const [query, setQuery] = useState<string>("");
 
-  let orgId: string | undefined = undefined
+  let orgId: string | undefined = undefined;
   if (organization.isLoaded && user.isLoaded) {
-    orgId = organization.organization?.id ?? user.user?.id
+    orgId = organization.organization?.id ?? user.user?.id;
   }
 
-  const files = useQuery(api.files.getFiles,
-    orgId ? { orgId, query, favorites: favoritesOnly, deletedOnly }
-      : 'skip'
-  )
+  const files = useQuery(
+    api.files.getFiles,
+    orgId ? { orgId, query, favorites: favoritesOnly, deletedOnly } : "skip"
+  );
 
-  const favorites = useQuery(api.files.getAllFavorites, orgId ? { orgId } : 'skip')
+  const favorites = useQuery(
+    api.files.getAllFavorites,
+    orgId ? { orgId } : "skip"
+  );
 
-  const isLoading = files === undefined
+  const isLoading = files === undefined;
+
+  const modifiedFiles =
+    files?.map((file) => ({
+      ...file,
+      isFavorite: (favorites ?? []).some(
+        (favorite) => favorite.fileId === file._id
+      ),
+    })) ?? [];
 
   return (
-    <div
-      className="w-full"
-    >
-      {
-        isLoading && (
-          <div
-            className='flex flex-col items-center justify-center mt-32 gap-4'
-          >
-            <Loader2 className="h-32 w-32 animate-spin text-zinc-700" />
-            <p className="text-2xl">Cargando tus archivos...</p>
-          </div>
-        )
-      }
-      {
-        !isLoading &&  (
-          <>
-            <div
-              className="flex items-center justify-between mb-4"
-            >
-              <h1
-                className="text-3xl font-bold text-gray-900"
-              >
-                {title}
-              </h1>
-              <SearchBar
-                query={query}
-                setQuery={setQuery}
-              />
-              <UploadButton />
+    <div className="w-full">
+      <>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+          <SearchBar query={query} setQuery={setQuery} />
+          <UploadButton />
+        </div>
+
+        <Tabs defaultValue="grid">
+          <TabsList className="mb-4">
+            <TabsTrigger value="grid">
+              <GridIcon className="mr-2 w-5 h-5" />
+              Cuadricula
+            </TabsTrigger>
+            <TabsTrigger value="table">
+              <RowsIcon className="mr-2 w-5 h-5" />
+              Tabla
+            </TabsTrigger>
+          </TabsList>
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center mt-32 gap-4">
+              <Loader2 className="h-32 w-32 animate-spin text-zinc-700" />
+              <p className="text-2xl">Cargando tus archivos...</p>
             </div>
-            {
-              files.length === 0 && <Placeholder />
-            }
-            <div
-              className='grid grid-cols-3 gap-4'
-            >
-              {
-                files?.map(file => (
-                  <FileCard
-                    key={file._id}
-                    file={file}
-                    favorites={favorites ?? [
-                    ]}
-                  />
-                ))
-              }
+          )}
+          <TabsContent value="grid">
+            <div className="grid grid-cols-3 gap-4 w-full">
+              {modifiedFiles.map((file) => (
+                <FileCard key={file._id} file={file} />
+              ))}
             </div>
-          </>
-        )
-      }
+          </TabsContent>
+          <TabsContent value="table">
+            <DataTable columns={columns} data={modifiedFiles} />
+          </TabsContent>
+        </Tabs>
+        {files?.length === 0 && <Placeholder />}
+      </>
     </div>
   );
 }

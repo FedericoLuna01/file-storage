@@ -19,6 +19,15 @@ const Header = () => {
             FileStorage
           </Link>
         </h1>
+        <Button
+          variant='outline'
+        >
+          <Link
+            href='/dashboard/archivos'
+          >
+            Tus archivos
+          </Link>
+        </Button>
         <nav>
           <SignedOut>
             <SignInButton
