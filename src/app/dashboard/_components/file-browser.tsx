@@ -7,12 +7,21 @@ import { FileCard } from "@/app/dashboard/_components/file-card";
 import Image from "next/image";
 import { GridIcon, Loader2, RowsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { SearchBar } from "@/app/dashboard/_components/search-bar";
 import { useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { DataTable } from "@/components/data-table";
 import { columns } from "./columns";
+import { Doc } from "../../../../convex/_generated/dataModel";
+import { Label } from "@/components/ui/label";
 
 function Placeholder() {
   return (
@@ -43,6 +52,7 @@ export function FileBrowser({
   const organization = useOrganization();
   const user = useUser();
   const [query, setQuery] = useState<string>("");
+  const [type, setType] = useState<Doc<"files">["type"] | "all">("all");
 
   let orgId: string | undefined = undefined;
   if (organization.isLoaded && user.isLoaded) {
@@ -51,7 +61,15 @@ export function FileBrowser({
 
   const files = useQuery(
     api.files.getFiles,
-    orgId ? { orgId, query, favorites: favoritesOnly, deletedOnly } : "skip"
+    orgId
+      ? {
+          orgId,
+          type: type === "all" ? undefined : type,
+          query,
+          favorites: favoritesOnly,
+          deletedOnly,
+        }
+      : "skip"
   );
 
   const favorites = useQuery(
@@ -79,16 +97,35 @@ export function FileBrowser({
         </div>
 
         <Tabs defaultValue="grid">
-          <TabsList className="mb-4">
-            <TabsTrigger value="grid">
-              <GridIcon className="mr-2 w-5 h-5" />
-              Cuadricula
-            </TabsTrigger>
-            <TabsTrigger value="table">
-              <RowsIcon className="mr-2 w-5 h-5" />
-              Tabla
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex justify-between items-center">
+            <TabsList className="mb-4">
+              <TabsTrigger value="grid">
+                <GridIcon className="mr-2 w-5 h-5" />
+                Cuadricula
+              </TabsTrigger>
+              <TabsTrigger value="table">
+                <RowsIcon className="mr-2 w-5 h-5" />
+                Tabla
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex gap-2 items-center">
+              <Label htmlFor="type-select">Filtrar por tipo</Label>
+              <Select
+                value={type}
+                onValueChange={(newType) => setType(newType as any)}
+              >
+                <SelectTrigger id="type-select" className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="image">Imagen</SelectItem>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="csv">CSV</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           {isLoading && (
             <div className="flex flex-col items-center justify-center mt-32 gap-4">
               <Loader2 className="h-32 w-32 animate-spin text-zinc-700" />

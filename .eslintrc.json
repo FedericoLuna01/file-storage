@@ -2,7 +2,6 @@
   "extends": "next/core-web-vitals",
   "rules": {
     "no-unused-vars": "warn",
-    "indent": [1, 2],
     "arrow-spacing": "warn",
     "no-multiple-empty-lines": "warn",
     "no-trailing-spaces": "warn",

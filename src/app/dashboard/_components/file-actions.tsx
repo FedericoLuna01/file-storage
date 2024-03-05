@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ export function FileCardActions({
   const deleteFile = useMutation(api.files.deleteFile);
   const restoreFile = useMutation(api.files.restoreFile);
   const toggleFavorite = useMutation(api.files.toggleFavorite);
+  const me = useQuery(api.users.getMe);
   const { toast } = useToast();
 
   return (
@@ -98,7 +99,16 @@ export function FileCardActions({
             />{" "}
             {isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
           </DropdownMenuItem>
-          <Protect role="org:admin" fallback={null}>
+          <Protect
+            condition={(check) => {
+              return (
+                check({
+                  role: "org:admin",
+                }) || file.userId === me?._id
+              );
+            }}
+            fallback={null}
+          >
             <DropdownMenuSeparator />
             {file.shouldDelete ? (
               <DropdownMenuItem
